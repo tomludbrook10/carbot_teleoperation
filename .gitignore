@@ -1,0 +1,102 @@
+# ===============================
+# General C++ Project .gitignore
+# ===============================
+
+# Build artifacts
+build/
+build-debug/
+build-release/
+bin/
+lib/
+obj/
+out/
+CMakeFiles/
+CMakeCache.txt
+*.a
+*.o
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+*.pdb
+
+# Compiled object files
+*.obj
+*.elf
+*.map
+*.hex
+
+# Generated code
+*.pb.cc
+*.pb.h
+*.grpc.pb.cc
+*.grpc.pb.h
+
+# Make / Ninja build files
+Makefile
+makefile
+*.ninja
+.ninja_deps
+.ninja_log
+
+# CMake-generated files
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+
+# Temporary / cache files
+*.tmp
+*.log
+*.swp
+*.swo
+*.bak
+*.old
+*.cache
+*.cmake
+*.dSYM/
+*.ipch
+*.pch
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.code-workspace
+*.sln
+*.vcxproj*
+*.xcodeproj/
+*.DS_Store
+*.directory
+*.clangd/
+compile_commands.json
+.vscode-server/
+
+# Testing / coverage
+*.gcda
+*.gcno
+*.gcov
+coverage/
+*.profraw
+*.profdata
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+._*
+.Trashes
+.Spotlight-V100
+
+# Python helper scripts / virtual envs
+__pycache__/
+*.pyc
+venv/
+.env/
+
+# Other tools
+.cache/
+logs/
+*.log

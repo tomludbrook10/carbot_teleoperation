@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package carbot_teleop;
+
+service CarbotTeleop {
+  rpc Start (StartRequest) returns (StartResponse) {}
+}
+
+message StartRequest {
+  string command = 1;
+}
+
+message StartResponse {
+  string status = 1;
+}
