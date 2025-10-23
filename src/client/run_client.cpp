@@ -1,7 +1,7 @@
 #include "teleoperation_client.h"
 
 int main() {
-    TeleoperationClient client("localhost", "localhost");
+    TeleoperationClient client("192.168.99.48", "192.168.99.254");
     client.Start();
     return 0;
 }

@@ -8,7 +8,7 @@
 std::atomic<bool> running{true};
 
 int main() {
-    TeleoperationServer server("localhost", "localhost");
+    TeleoperationServer server("192.168.99.48", "192.168.99.254");
 
     std::signal(SIGINT, [](int){ 
         running.store(false, std::memory_order_relaxed);
