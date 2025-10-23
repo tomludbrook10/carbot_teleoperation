@@ -85,8 +85,7 @@ void TeleopReactor::NextWrite() {
     {
         std::unique_lock<std::mutex> lock(*k_mu_);
         // wait till there are new kinematics to display.
-        std::cout << "Lockingg k_mu_" << std::endl;
-        k_cv_->wait(lock, [this]{return k_updated_ || !running_->load(std::memory_order_relaxed); });
+        k_cv_->wait(lock, [this]{return *k_updated_ || !running_->load(std::memory_order_relaxed); });
         if (!running_->load(std::memory_order_relaxed)) {
             std::cout << "TeleopReactor stopping write due to shutdown." << std::endl;
             Finish(grpc::Status::OK);
@@ -94,6 +93,7 @@ void TeleopReactor::NextWrite() {
         }
         current_kinematics_ = MakeKinematics(*kinematics_);
         *k_updated_ = false;
+        
     }
     StartWrite(&current_kinematics_);
 }
