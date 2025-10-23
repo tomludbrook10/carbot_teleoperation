@@ -147,6 +147,7 @@ target_include_directories(carbot_server_lib PUBLIC
 
 include(GNUInstallDirs)
 
+# allows projects to find the package via find_package()
 install(TARGETS carbot_server_lib
                 ct_grpc_proto
     EXPORT carbot_server_libTargets
@@ -168,8 +169,6 @@ install(DIRECTORY
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/carbot_server
     FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
 )
-
-
 
 include(CMakePackageConfigHelpers)
 # Export so other projects can use the target:
