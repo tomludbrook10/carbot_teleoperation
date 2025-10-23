@@ -174,7 +174,7 @@ install(DIRECTORY
 include(CMakePackageConfigHelpers)
 # Export so other projects can use the target:
 install(EXPORT carbot_server_libTargets
-    FILE carbot_server_lib.cmake
+    FILE carbot_server_libTargets.cmake
     NAMESPACE carbot_server_lib::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/carbot_server_lib
 )
