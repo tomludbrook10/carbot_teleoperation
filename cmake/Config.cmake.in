@@ -1,0 +1,4 @@
+
+@PACKAGE_INIT@
+include("${CMAKE_CURRENT_LIST_DIR}/carbot_server_libTargets.cmake")
+check_required_components(carbot_server_lib)

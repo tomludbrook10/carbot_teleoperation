@@ -149,7 +149,7 @@ include(GNUInstallDirs)
 
 install(TARGETS carbot_server_lib
                 ct_grpc_proto
-    EXPORT CarbotTeleopTargets
+    EXPORT carbot_server_libTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -170,8 +170,21 @@ install(DIRECTORY
 )
 
 
+
+include(CMakePackageConfigHelpers)
 # Export so other projects can use the target:
-install(EXPORT CarbotTeleopTargets
-    NAMESPACE CarBotServerLib::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CarBotServerLib
+install(EXPORT carbot_server_libTargets
+    FILE carbot_server_lib.cmake
+    NAMESPACE carbot_server_lib::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/carbot_server_lib
+)
+
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/carbot_server_libConfig.cmake"
+  INSTALL_DESTINATION lib/cmake/carbot_server_lib
+)
+
+install(FILES
+          "${CMAKE_CURRENT_BINARY_DIR}/carbot_server_libConfig.cmake"
+        DESTINATION lib/cmake/carbot_server_lib
 )
