@@ -33,6 +33,7 @@ private:
     std::mutex k_mu_;
     Kinematics current_kinematics_;
     std::condition_variable k_cv_;
+    bool k_updated_ = false;
 
     std::string server_address_;
     std::string client_address_;

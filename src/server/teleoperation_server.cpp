@@ -65,12 +65,13 @@ void TeleoperationServer::UpdateKinematics(const Kinematics& kinematics) {
     {
         std::unique_lock<std::mutex> lock(k_mu_);
         current_kinematics_ = kinematics;
+        k_updated_ = true;
     }
     k_cv_.notify_one();
 }
 
 void TeleoperationServer::RunServer(const std::string server_address, const int rpc_port) {
-    CarbotTeleopServiceImpl service(&cq_, &cq_mu_, &cq_cv_, &current_kinematics_, &k_mu_, &k_cv_, &running_);
+    CarbotTeleopServiceImpl service(&cq_, &cq_mu_, &cq_cv_, &current_kinematics_, &k_mu_, &k_cv_, &running_, &k_updated_);
     grpc::ServerBuilder builder;
     builder.AddListeningPort(server_address + ":" + std::to_string(rpc_port), grpc::InsecureServerCredentials());
     builder.RegisterService(&service);

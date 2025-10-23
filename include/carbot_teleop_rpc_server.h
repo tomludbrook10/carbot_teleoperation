@@ -13,7 +13,7 @@ class CarbotTeleopServiceImpl final : public carbot_teleop::CarbotTeleop::Callba
 public:
     explicit CarbotTeleopServiceImpl(std::queue<CommandRequest>* cq, std::mutex* cq_mu, std::condition_variable* cq_cv,
                                      Kinematics* kinematics, std::mutex* k_mu, std::condition_variable* k_cv,
-                                     std::atomic<bool>* running);
+                                     std::atomic<bool>* running, bool* k_updated);
 
     grpc::ServerUnaryReactor* GetStatus(grpc::CallbackServerContext* context,
                                         const google::protobuf::Empty* request,
@@ -30,6 +30,7 @@ private:
     std::mutex* k_mu_;
     Kinematics* kinematics_;
     std::condition_variable* k_cv_;
+    bool* k_updated_;
 
     std::atomic<bool>* running_;
 };

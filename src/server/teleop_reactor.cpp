@@ -45,10 +45,10 @@ carbot_teleop::CurrentKinematics MakeKinematics(const Kinematics& kinematics) {
 
 TeleopReactor::TeleopReactor(std::queue<CommandRequest>* cq, std::mutex* cq_mu, std::condition_variable* cq_cv,
                              Kinematics* kinematics, std::mutex* k_mu, std::condition_variable* k_cv,
-                             std::atomic<bool>* running)
+                             std::atomic<bool>* running, bool* k_updated)
     : cq_(cq), cq_mu_(cq_mu), cq_cv_(cq_cv),
       kinematics_(kinematics), k_mu_(k_mu), k_cv_(k_cv),
-      running_(running), prev_kinematics_(*kinematics) {
+      running_(running), k_updated_(k_updated) {
     StartWrite(&current_kinematics_); // Initial dummy write to kick things off.
     StartRead(&command_request_);
 }
@@ -86,14 +86,14 @@ void TeleopReactor::NextWrite() {
         std::unique_lock<std::mutex> lock(*k_mu_);
         // wait till there are new kinematics to display.
         std::cout << "Lockingg k_mu_" << std::endl;
-        k_cv_->wait(lock, [this]{return !prev_kinematics_.Equals(*kinematics_) || !running_->load(std::memory_order_relaxed); });
+        k_cv_->wait(lock, [this]{return k_updated_ || !running_->load(std::memory_order_relaxed); });
         if (!running_->load(std::memory_order_relaxed)) {
             std::cout << "TeleopReactor stopping write due to shutdown." << std::endl;
             Finish(grpc::Status::OK);
             return;
         }
         current_kinematics_ = MakeKinematics(*kinematics_);
-        prev_kinematics_ = *kinematics_;
+        *k_updated_ = false;
     }
     StartWrite(&current_kinematics_);
 }

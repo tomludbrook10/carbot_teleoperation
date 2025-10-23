@@ -12,7 +12,7 @@ class TeleopReactor : public grpc::ServerBidiReactor<carbot_teleop::CommandReque
 public:
     TeleopReactor(std::queue<CommandRequest>* cq, std::mutex* cq_mu, std::condition_variable* cq_cv,
                   Kinematics* kinematics, std::mutex* k_mu, std::condition_variable* k_cv,
-                  std::atomic<bool>* running);
+                  std::atomic<bool>* running, bool* k_updated);
 
     void OnWriteDone(bool ok) override;
     void OnReadDone(bool ok) override;
@@ -24,7 +24,6 @@ private:
 
     carbot_teleop::CommandRequest command_request_;
     carbot_teleop::CurrentKinematics current_kinematics_;
-    Kinematics prev_kinematics_;
 
     std::mutex* cq_mu_;
     std::queue<CommandRequest>* cq_;
@@ -33,6 +32,7 @@ private:
     std::mutex* k_mu_;
     Kinematics* kinematics_;
     std::condition_variable* k_cv_;
+    bool* k_updated_;
 
     std::atomic<bool>* running_;
 };
