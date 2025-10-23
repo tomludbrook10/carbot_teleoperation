@@ -58,7 +58,9 @@ add_custom_command(
 
 #include headers.
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/server")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/client")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include/common")
 
 add_library(ct_grpc_proto
     ${ct_proto_srcs}
@@ -101,7 +103,7 @@ add_library(carbot_client_lib
 )
 
 target_link_libraries(carbot_client_lib
-    ct_grpc_proto
+PRIVATE ct_grpc_proto
     absl::base
     ${_GRPC_GRPCPP}
     ${GSTREAMER_LIBRARIES}
@@ -115,9 +117,9 @@ target_include_directories(carbot_client_lib PUBLIC
 add_executable(run_server src/server/run_server.cpp)
 target_link_libraries(run_server
     carbot_server_lib
-    ct_grpc_proto
     absl::base
     ${_GRPC_GRPCPP}
+    ct_grpc_proto
 )
 
 # Client executable
@@ -129,7 +131,47 @@ target_link_libraries(run_client
     ${_GRPC_GRPCPP}
 )
 
-add_executable(client_video_streamer src/client/client_streamer.cpp)
-target_link_libraries(client_video_streamer
-    carbot_client_lib
+set(CMAKE_INSTALL_PREFIX $ENV{HOME}/.local)
+#### 
+# Installation rules
+####
+
+target_include_directories(carbot_server_lib PUBLIC
+    ## For the build tree, specify the source directory for includes
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/server>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/common>
+    ## For the install tree, specify the install directory for includes
+    $<INSTALL_INTERFACE:include/carbot_server/server>
+    $<INSTALL_INTERFACE:include/carbot_server/common>
+)
+
+include(GNUInstallDirs)
+
+install(TARGETS carbot_server_lib
+                ct_grpc_proto
+    EXPORT CarbotTeleopTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Install public headers:
+install(DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/server
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/carbot_server
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
+
+install(DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/common
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/carbot_server
+    FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h"
+)
+
+
+# Export so other projects can use the target:
+install(EXPORT CarbotTeleopTargets
+    NAMESPACE CarBotServerLib::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/CarBotServerLib
 )

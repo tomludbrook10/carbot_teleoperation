@@ -93,7 +93,6 @@ void TeleopReactor::NextWrite() {
         }
         current_kinematics_ = MakeKinematics(*kinematics_);
         *k_updated_ = false;
-        
     }
     StartWrite(&current_kinematics_);
 }
