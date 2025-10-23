@@ -102,5 +102,5 @@ void ServerStreamer::run() {
         }
         gst_message_unref (msg);
     }
-    g_print("Finished streaming");
+    g_print("Finished streaming\n");
 }

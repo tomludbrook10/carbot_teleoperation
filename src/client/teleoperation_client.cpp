@@ -11,15 +11,13 @@ TeleoperationClient::TeleoperationClient(const std::string& server_address,
                                          const int rpc_port)
     : server_address_(server_address),
       client_address_(client_address),
-      video_port_(video_port),
-      streamer_(video_port) {
+      video_port_(video_port) {
     rpc_thread_ = std::thread(&TeleoperationClient::RunRPCClient, this, server_address_, rpc_port);
-    streamer_.setup();
-    streamer_.run_async();
 }
 
 TeleoperationClient::~TeleoperationClient() {
     stop_rpc_.store(true, std::memory_order_relaxed);
+    cq_cv_.notify_one();
     if (rpc_thread_.joinable()) {
         rpc_thread_.join();
     }

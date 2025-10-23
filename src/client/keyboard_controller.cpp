@@ -54,6 +54,9 @@ void KeyboardController::KinematicListener() {
     while (run_listener_.load(std::memory_order_relaxed)) {
         std::unique_lock<std::mutex> lock(*k_mu_);
         k_cv_->wait(lock, [this]{ return *k_updated_ || !run_listener_.load(std::memory_order_relaxed); });
+        if (!run_listener_.load(std::memory_order_relaxed)) {
+            break;
+        }
         current_kinematics_->Print();
         *k_updated_ = false;
     }

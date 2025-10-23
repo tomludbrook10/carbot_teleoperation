@@ -21,7 +21,6 @@ public:
                           std::condition_variable* k_cv,
                           bool* k_updated,
                           std::atomic<bool>* stop_rpc);
-
     std::string GetStatus();
     void StreamTeleoperation();
 

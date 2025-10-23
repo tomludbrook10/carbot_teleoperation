@@ -26,7 +26,7 @@ private:
     std::string client_address_;
     int video_port_;
     std::thread rpc_thread_;
-    ClientStreamer streamer_;
+   // ClientStreamer streamer_;
 
     std::queue<CommandRequest> cq_;
     std::mutex cq_mu_;

@@ -46,17 +46,24 @@ std::string CarbotTeleopRPCClient::GetStatus() {
 }
 
 void CarbotTeleopRPCClient::StreamTeleoperation() {
-    TeleopClientReactor reactor(stub_.get(), cq_, cq_mu_, cq_cv_, k_mu_, current_kinematics_, k_cv_, k_updated_);
+    std::cout << "Starting teleoperation stream..." << std::endl;
+    TeleopClientReactor reactor(stub_.get(), cq_, cq_mu_, cq_cv_, k_mu_, current_kinematics_, k_cv_, k_updated_, stop_rpc_);
 
+    
+    std::cout << "Finished construction of teleop stream" << std::endl; 
     std::thread stopper([this, &reactor]() {
+        std::cout << "Starting rpc stopper thread..." << std::endl;
         while (!stop_rpc_->load(std::memory_order_relaxed)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
+        std::cout << "Stopping RPC client stream..." << std::endl;
         reactor.Stop();
     });
 
     grpc::Status status = reactor.Await();
-    stopper.join();
+    if (stopper.joinable()) {
+        stopper.join();
+    }
 
     if (!status.ok()) {
         std::cerr << "StreamTeleoperation RPC failed: " << status.error_code() << ": " << status.error_message() << std::endl;

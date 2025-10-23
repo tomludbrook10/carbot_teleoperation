@@ -8,7 +8,7 @@ ClientStreamer::ClientStreamer(const int client_port)
 
 ClientStreamer::~ClientStreamer() {
     // if kill_run is already, been called it does nothing.
-    kill_run();
+    //kill_run();
     // clean up
     if (pipeline_) {
         gst_element_set_state(pipeline_, GST_STATE_NULL);
@@ -64,16 +64,17 @@ void ClientStreamer::kill_run() {
 }
 
 void ClientStreamer::run() {
-    {
-        std::lock_guard<std::mutex> lock(pipeline_mu_);
+    //{
+        //std::lock_guard<std::mutex> lock(pipeline_mu_);
         if (bus_ == nullptr || pipeline_  == nullptr) {
             std::cerr << "Error: must set up pipeline and bus first" << std::endl;
             return;
         }
-
+        
+     //   gst_macos_main(); 
         gst_element_set_state(pipeline_, GST_STATE_PLAYING);
         g_print("Pipeline is running...\n");
-    }
+   // }
 
     GstMessage *msg = gst_bus_timed_pop_filtered(bus_, GST_CLOCK_TIME_NONE,
                                             static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_EOS));
@@ -99,4 +100,15 @@ void ClientStreamer::run() {
         gst_message_unref (msg);
     }
     g_print("Finished streaming");
+}
+
+int main() {
+    ClientStreamer streamer(5000);
+    if (!streamer.setup()) {
+        std::cerr << "Failed to set up client streamer" << std::endl;
+        return -1;
+    }
+    streamer.run();
+    //streamer.kill_run();
+    return 0;
 }

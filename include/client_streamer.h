@@ -12,10 +12,9 @@ public:
     bool setup();
     void run_async();
     void kill_run();
-
-private:
     void run();
-
+    
+private:
     GstElement *pipeline_;
     GstBus *bus_;
     std::mutex pipeline_mu_;

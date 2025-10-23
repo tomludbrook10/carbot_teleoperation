@@ -128,3 +128,8 @@ target_link_libraries(run_client
     absl::base
     ${_GRPC_GRPCPP}
 )
+
+add_executable(client_video_streamer src/client/client_streamer.cpp)
+target_link_libraries(client_video_streamer
+    carbot_client_lib
+)

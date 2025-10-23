@@ -16,7 +16,8 @@ public:
                                  std::mutex* k_mu,
                                  Kinematics* current_kinematics,
                                  std::condition_variable* k_cv,
-                                 bool* k_updated);
+                                 bool* k_updated,
+                                 std::atomic<bool>* stop_rpc);
 
     void OnWriteDone(bool ok) override;
     void OnReadDone(bool ok) override;
@@ -46,4 +47,6 @@ private:
     std::mutex mu_;
     std::condition_variable cv_;
     bool done_ = false;
+
+    std::atomic<bool>* stop_rpc_;
 };

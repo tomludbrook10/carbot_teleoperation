@@ -49,7 +49,7 @@ TeleopReactor::TeleopReactor(std::queue<CommandRequest>* cq, std::mutex* cq_mu, 
     : cq_(cq), cq_mu_(cq_mu), cq_cv_(cq_cv),
       kinematics_(kinematics), k_mu_(k_mu), k_cv_(k_cv),
       running_(running), prev_kinematics_(*kinematics) {
-    NextWrite();
+    StartWrite(&current_kinematics_); // Initial dummy write to kick things off.
     StartRead(&command_request_);
 }
 

@@ -20,11 +20,13 @@ TeleopClientReactor::TeleopClientReactor(carbot_teleop::CarbotTeleop::Stub* stub
                                          std::mutex* k_mu,
                                          Kinematics* current_kinematics,
                                          std::condition_variable* k_cv,
-                                         bool* k_updated)
+                                         bool* k_updated,
+                                         std::atomic<bool>* stop_rpc)
     : stub_(stub), cq_(cq), cq_mu_(cq_mu), cq_cv_(cq_cv),
-      k_mu_(k_mu), current_kinematics_(current_kinematics), k_cv_(k_cv), k_updated_(k_updated) {
+      k_mu_(k_mu), current_kinematics_(current_kinematics), k_cv_(k_cv), k_updated_(k_updated), stop_rpc_(stop_rpc) {
     stub_->async()->StreamTeleoperation(&context_, this);
-    NextWrite();
+   // NextWrite(); 
+    StartWrite(&command_); // Initial dummy write to kick things off.
     StartRead(&server_kinematics_);
     StartCall(); // Activates the RPC.
 }
@@ -56,6 +58,7 @@ void TeleopClientReactor::Stop() {
 }
 
 void TeleopClientReactor::OnDone(const grpc::Status& status) {
+    std::cout << "TeleopClientReactor done with status: " << status.error_message() << std::endl;
     std::unique_lock<std::mutex> lock(mu_);
     status_ = status;
     done_ = true;
@@ -70,7 +73,11 @@ grpc::Status TeleopClientReactor::Await() {
 
 void TeleopClientReactor::NextWrite() {
     std::unique_lock<std::mutex> lock(*cq_mu_);
-    cq_cv_->wait(lock, [this]{ return !cq_->empty(); });
+    cq_cv_->wait(lock, [this]{ return !cq_->empty() || stop_rpc_->load(std::memory_order_relaxed); });
+    if (stop_rpc_->load(std::memory_order_relaxed)) {
+        StartWritesDone();
+        return;
+    }
     const auto& command = cq_->front();
     command_.set_speed(command.speed);
     command_.set_steering_angle(command.steering_angle);
