@@ -2,14 +2,37 @@ syntax = "proto3";
 
 package carbot_teleop;
 
+import "google/protobuf/empty.proto";
+
 service CarbotTeleop {
-  rpc Start (StartRequest) returns (StartResponse) {}
+  /// Request the status of carbot
+  rpc GetStatus (google.protobuf.Empty) returns (StatusResponse) {}
+  // Stream to carbot for teleoperation commands
+  //rpc CommandStream (stream CommandRequest) returns (stream CommandResponse) {}
+  rpc StreamTeleoperation (stream CommandRequest) returns (stream CurrentKinematics) {}
 }
 
-message StartRequest {
-  string command = 1;
+message CommandRequest {
+  float speed = 1;
+  float steering_angle = 2;
 }
 
-message StartResponse {
+message Point {
+  float x = 1;
+  float y = 2;
+}
+
+message Pose {
+  Point position = 1;
+  float orientation = 2;
+}
+
+message CurrentKinematics {
+  float current_speed = 1;
+  float current_steering_angle = 2;
+  Pose pose = 3;
+}
+
+message StatusResponse {
   string status = 1;
 }

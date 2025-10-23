@@ -5,6 +5,21 @@ set(CMAKE_CXX_STANDARD 17)
 ## add so that cmake can find the locally installed packages.
 list(APPEND CMAKE_PREFIX_PATH "$ENV{HOME}/.local")
 
+# Fix for Homebrew GStreamer linking on macOS
+if(APPLE)
+    # Explicitly tell the linker where to find GStreamer libs
+    link_directories(
+        /opt/homebrew/lib
+        /opt/homebrew/Cellar/gstreamer/1.26.7/lib
+        /opt/homebrew/Cellar/glib/2.86.0/lib
+        /opt/homebrew/opt/gettext/lib
+    )
+endif()
+
+# Find GStreamer
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+
 
 find_package(absl CONFIG REQUIRED)
 set(protobuf_MODULE_COMPATIBLE TRUE)
@@ -21,8 +36,6 @@ set(_GRPC_CPP_PLUGIN_EXECUTABLE $<TARGET_FILE:gRPC::grpc_cpp_plugin>) # path to 
 ###
 # Proto generation code.
 ###
-
-
 
 get_filename_component(ct_proto "protos/carbot_teleop.proto" ABSOLUTE)
 get_filename_component(ct_proto_path "${ct_proto}" PATH)
@@ -45,6 +58,7 @@ add_custom_command(
 
 #include headers.
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 add_library(ct_grpc_proto
     ${ct_proto_srcs}
@@ -58,15 +72,58 @@ target_link_libraries(ct_grpc_proto
     ${_GRPC_GRPCPP}
 )
 
-add_executable(basic_server src/basic_server.cpp)
-target_link_libraries(basic_server
+# Server-side library
+add_library(carbot_server_lib
+    src/server/server_streamer.cpp
+    src/server/teleop_reactor.cpp
+    src/server/carbot_teleop_rpc_server.cpp
+    src/server/teleoperation_server.cpp
+)
+
+target_link_libraries(carbot_server_lib
+    ct_grpc_proto
+    absl::base
+    ${_GRPC_GRPCPP}
+    ${GSTREAMER_LIBRARIES}
+)
+
+target_include_directories(carbot_server_lib PUBLIC
+    ${GSTREAMER_INCLUDE_DIRS}
+)
+
+# Client-side library
+add_library(carbot_client_lib
+    src/client/client_streamer.cpp
+    src/client/teleop_client_reactor.cpp
+    src/client/carbot_teleop_rpc_client.cpp
+    src/client/keyboard_controller.cpp
+    src/client/teleoperation_client.cpp
+)
+
+target_link_libraries(carbot_client_lib
+    ct_grpc_proto
+    absl::base
+    ${_GRPC_GRPCPP}
+    ${GSTREAMER_LIBRARIES}
+)
+
+target_include_directories(carbot_client_lib PUBLIC
+    ${GSTREAMER_INCLUDE_DIRS}
+)
+
+# Server executable
+add_executable(run_server src/server/run_server.cpp)
+target_link_libraries(run_server
+    carbot_server_lib
     ct_grpc_proto
     absl::base
     ${_GRPC_GRPCPP}
 )
 
-add_executable(basic_client src/basic_client.cpp)
-target_link_libraries(basic_client
+# Client executable
+add_executable(run_client src/client/run_client.cpp)
+target_link_libraries(run_client
+    carbot_client_lib
     ct_grpc_proto
     absl::base
     ${_GRPC_GRPCPP}
