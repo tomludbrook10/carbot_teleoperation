@@ -1,6 +1,6 @@
 #include "teleoperation_client.h"
 #include "carbot_teleop_rpc_client.h"
-#include "keyboard_controller.h"
+#include "ps4_controller.h"
 #include <grpcpp/create_channel.h>
 #include <grpcpp/security/credentials.h>
 #include <iostream>
@@ -24,7 +24,7 @@ TeleoperationClient::~TeleoperationClient() {
 }
 
 void TeleoperationClient::Start() {
-    KeyboardController controller(&cq_, &cq_mu_, &cq_cv_,
+    PS4Controller controller(&cq_, &cq_mu_, &cq_cv_,
                                   &k_mu_, &current_kinematics_,
                                   &k_cv_, &k_updated_);
     controller.Run();

@@ -15,7 +15,7 @@ int main() {
         std::cout << "SIGINT received, shutting down server..." << std::endl;
     });
 
-    std::thread server_thread([&server]() { 
+    std::thread server_thread([&server]() {
         CommandRequest command;
         while (server.IsRunning()) {
             if (server.GetNextCommand(command)) {

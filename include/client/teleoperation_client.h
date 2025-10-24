@@ -16,7 +16,6 @@ public:
                                  const int video_port = 5000,
                                  const int rpc_port = 50051);
     ~TeleoperationClient();
-
     void Start();
 
 private:
@@ -26,7 +25,6 @@ private:
     std::string client_address_;
     int video_port_;
     std::thread rpc_thread_;
-   // ClientStreamer streamer_;
 
     std::queue<CommandRequest> cq_;
     std::mutex cq_mu_;

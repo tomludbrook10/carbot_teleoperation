@@ -33,7 +33,6 @@ TeleoperationServer::TeleoperationServer(const std::string& server_address,
 
 TeleoperationServer::~TeleoperationServer() {
     Stop();
-
     if (rpc_thread_.joinable()) {
         rpc_thread_.join();
         std::cout << "RPC thread joined successfully." << std::endl;

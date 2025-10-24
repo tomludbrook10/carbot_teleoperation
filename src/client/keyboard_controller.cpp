@@ -2,6 +2,9 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <thread>
+#include <chrono>
 
 KeyboardController::KeyboardController(std::queue<CommandRequest>* cq, std::mutex* mu, std::condition_variable* cv,
                                        std::mutex* k_mu, Kinematics* current_kinematics,
@@ -21,7 +24,6 @@ KeyboardController::~KeyboardController() {
 void KeyboardController::Run() {
     std::cout << "Starting Kinematic Listener" << std::endl;
     kinematic_listener_thread_ = std::thread(&KeyboardController::KinematicListener, this);
-
     std::cout << "Press any key (q to quit): " << std::endl;
 
     // store the old STDIN terminal attributes in old.
@@ -35,18 +37,40 @@ void KeyboardController::Run() {
     if (tcsetattr(STDIN_FILENO, TCSANOW, &newt) < 0) // specify TCSANOW, to set the attributed now.
         perror("tcsetattr ICANON");
 
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    if (fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) < 0) // set the file descriptor to non blocking.
+        perror("fcntl");
+    
+    std::cout << "Keyboard controller running. Use WASD to control, Q to quit." << std::endl;
+
     char c = 0;
+    char prev_c = 0;
     while (true) {
-        if (read(STDIN_FILENO, &c, 1) < 0) {
+
+        auto res = read(STDIN_FILENO, &c, 1);
+        if (res < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
             perror("read");
-            break;
         }
         if (c == 'q') {
             std::cout << "Cancelled" << std::endl;
             break;
         }
+        if (c == 0 && prev_c != 0) {
+            c = prev_c; // continue with previous command if no new input
+            prev_c = 0;
+        } else {
+            prev_c = c;
+        } 
         SendCommand(c);
+        c = 0;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+
+    // Restore the old terminal attributes.
+    int flags_ = fcntl(STDIN_FILENO, F_GETFL, 0);
+    if (fcntl(STDIN_FILENO, F_SETFL, flags_ & ~O_NONBLOCK) < 0)
+        perror("fcntl");
     tcsetattr(STDIN_FILENO, TCSADRAIN, &old);
 }
 
@@ -68,11 +92,23 @@ void KeyboardController::SendCommand(const char c) {
     } else if (c == 's') {
         current_speed_ -= speed_increment_;
     } else if (c == 'a') {
+        if (current_steering_angle_ <= 0.f)
+            current_steering_angle_ = 0.1f;
+        else
         current_steering_angle_ += steering_increment_;
     } else if (c == 'd') {
-        current_steering_angle_ -= steering_increment_;
-    } else {
-        return;
+        if (current_steering_angle_ >= 0.f)
+            current_steering_angle_ = -0.1f;
+        else
+            current_steering_angle_ -= steering_increment_;
+    }
+
+    if (c != 'a' && c != 'd' && std::abs(current_steering_angle_) > 0.01) {
+        if (std::abs(current_steering_angle_) < 0.1) {
+            current_steering_angle_ = 0.0f;
+        } else {
+            current_steering_angle_ *= 0.6f;
+        }
     }
 
     // Clamp values

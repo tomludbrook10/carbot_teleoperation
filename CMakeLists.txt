@@ -20,7 +20,7 @@ endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 
-
+find_package(SDL2 REQUIRED CONFIG)
 find_package(absl CONFIG REQUIRED)
 set(protobuf_MODULE_COMPATIBLE TRUE)
 find_package(Protobuf CONFIG REQUIRED)
@@ -100,6 +100,7 @@ add_library(carbot_client_lib
     src/client/carbot_teleop_rpc_client.cpp
     src/client/keyboard_controller.cpp
     src/client/teleoperation_client.cpp
+    src/client/ps4_controller.cpp
 )
 
 target_link_libraries(carbot_client_lib
@@ -107,10 +108,12 @@ PRIVATE ct_grpc_proto
     absl::base
     ${_GRPC_GRPCPP}
     ${GSTREAMER_LIBRARIES}
+    SDL2::SDL2
 )
 
 target_include_directories(carbot_client_lib PUBLIC
     ${GSTREAMER_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}
 )
 
 # Server executable
