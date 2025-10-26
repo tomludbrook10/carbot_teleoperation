@@ -61,6 +61,8 @@ void PS4Controller::Run() {
 
     bool run = true;
 
+    int i = 0;
+
     while (run) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
@@ -92,21 +94,24 @@ void PS4Controller::Run() {
             if (b_speed_input > 0)
                 f_speed_input = 0.0f;
 
-            if (f_speed_input != f_speed_input_prev || b_speed_input != b_speed_input_prev ||
-                steering_input != steering_input_prev) {
-                CommandRequest cmd{f_speed_input + b_speed_input, steering_input};
-                {
-                    cmd.Print();
-                    std::lock_guard<std::mutex> lock(*cq_mu_);
-                    cq_->push(cmd);
-                }
-                cq_cv_->notify_one();
-                f_speed_input_prev = f_speed_input;
-                b_speed_input_prev = b_speed_input;
-                steering_input_prev = steering_input;
+            //steering_input = -steering_input; // invert steering
+            if (f_speed_input == f_speed_input_prev &&
+                b_speed_input == b_speed_input_prev &&
+                steering_input == steering_input_prev) {
+                continue; // no change
             }
-
+            CommandRequest cmd{f_speed_input + b_speed_input, -steering_input};
+            {
+                cmd.Print();
+                std::lock_guard<std::mutex> lock(*cq_mu_);
+                cq_->push(cmd);
+            }
+            cq_cv_->notify_one();
+            f_speed_input_prev = f_speed_input;
+            b_speed_input_prev = b_speed_input;
+            steering_input_prev = steering_input;
         }
         SDL_Delay(10);
     }
+    SDL_Delay(10);
 }
