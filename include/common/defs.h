@@ -41,6 +41,15 @@ struct Kinematics {
     float current_steering_angle;
     Pose pose;
 
+    Kinematics() : current_speed(0.0f), current_steering_angle(0.0f) {}
+
+    Kinematics(float current_speed, float current_steering_angle, float orientation, float x, float y)
+        : current_speed(current_speed), current_steering_angle(current_steering_angle) {
+            pose.orientation = orientation;
+            pose.position.x = x;
+            pose.position.y = y;
+        }
+
     bool Equals(const Kinematics& other) {
         return pose.Equals(other.pose) &&  
         current_speed == other.current_speed && 

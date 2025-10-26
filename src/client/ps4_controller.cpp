@@ -100,9 +100,9 @@ void PS4Controller::Run() {
                 steering_input == steering_input_prev) {
                 continue; // no change
             }
+            
             CommandRequest cmd{f_speed_input + b_speed_input, -steering_input};
             {
-                cmd.Print();
                 std::lock_guard<std::mutex> lock(*cq_mu_);
                 cq_->push(cmd);
             }

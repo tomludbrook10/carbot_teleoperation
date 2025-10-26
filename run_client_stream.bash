@@ -7,7 +7,7 @@
 gst-launch-1.0 -v \
   udpsrc port=5000 \
     caps="application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, payload=(int)96" \
-  ! rtpjitterbuffer latency=100 drop-on-latency=true post-drop-messages=true \
+  ! rtpjitterbuffer latency=50 drop-on-latency=true post-drop-messages=true \
   ! rtph264depay \
   ! h264parse \
   ! avdec_h264 \
