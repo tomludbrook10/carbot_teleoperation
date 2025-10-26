@@ -29,7 +29,7 @@ bool ServerStreamer::setup() {
                     << "video/x-raw(memory:NVMM), width=1920, height=1080, framerate=30/1, format=NV12 ! "
                     << "nvvidconv ! "
                     << "video/x-raw, format=NV12 ! "
-                    << "x264enc bitrate=4000 speed-preset=superfast tune=zerolatency key-int-max=30! "
+                    << "x264enc bitrate=4000 speed-preset=superfast tune=zerolatency key-int-max=30 ! "
                     << "h264parse config-interval=1 ! "
                     << "rtph264pay pt=96 ! "
                     << "udpsink host="
