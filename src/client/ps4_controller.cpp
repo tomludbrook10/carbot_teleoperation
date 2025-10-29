@@ -28,6 +28,7 @@ void PS4Controller::KinematicListener() {
         current_kinematics_->Print();
         *k_updated_ = false;
     }
+    std::cout << std::endl;
 }
 
 float NormaliseAndProject(int value, float max) {
@@ -55,25 +56,29 @@ void PS4Controller::Run() {
     float f_speed_input = 0.0f;
     float b_speed_input = 0.0f;
     float steering_input = 0.0f;
-    float f_speed_input_prev = 0.0f;
-    float b_speed_input_prev = 0.0f;
-    float steering_input_prev = 0.0f;
 
     bool run = true;
-
-    int i = 0;
+    bool received_input_from_4 = false;
+    bool received_input_from_5 = false;
+    bool received_input_from_0 = false;
 
     while (run) {
         SDL_Event e;
+        // If we add the delay like we did, wouldn't the queue fill up very fast.
+        // Then we would have a delay as it cleans out commands?
+        // This could be the reason why there is some times a delayed
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_CONTROLLERAXISMOTION) {
                 int axis = (int)e.caxis.axis;
-                if (axis == 4) {
+                if (axis == 4 && !received_input_from_4) {
                     b_speed_input = NormaliseAndProject(e.caxis.value, -max_speed_);
-                } else if (axis == 5) {
+                    received_input_from_4 = true;
+                } else if (axis == 5 && !received_input_from_5) {
                     f_speed_input = NormaliseAndProject(e.caxis.value, max_speed_);
-                } else if (axis == 0) {
+                    received_input_from_5 = true;
+                } else if (axis == 0 && !received_input_from_0) {
                     steering_input = NormaliseAndProject(e.caxis.value, max_steering_angle_);
+                    received_input_from_0 = true;
                 }
             }
             if (e.type == SDL_CONTROLLERBUTTONDOWN) {
@@ -84,34 +89,40 @@ void PS4Controller::Run() {
                 }
             }
 
-            if (f_speed_input > 0 && b_speed_input > 0) {
-                f_speed_input = 0.0f;
-                b_speed_input = 0.0f;
+            // runs out of all the events in the queue
+            if (received_input_from_0 && received_input_from_4 && received_input_from_5) {
+                break;
             }
-
-            if (f_speed_input < 0)
-                b_speed_input = 0.0f;
-            if (b_speed_input > 0)
-                f_speed_input = 0.0f;
-
-            //steering_input = -steering_input; // invert steering
-            if (f_speed_input == f_speed_input_prev &&
-                b_speed_input == b_speed_input_prev &&
-                steering_input == steering_input_prev) {
-                continue; // no change
-            }
-            
-            CommandRequest cmd{f_speed_input + b_speed_input, -steering_input};
-            {
-                std::lock_guard<std::mutex> lock(*cq_mu_);
-                cq_->push(cmd);
-            }
-            cq_cv_->notify_one();
-            f_speed_input_prev = f_speed_input;
-            b_speed_input_prev = b_speed_input;
-            steering_input_prev = steering_input;
         }
+
+        if (run == false) {
+            break;
+        }
+
+
+        if (f_speed_input > 0 && b_speed_input > 0) {
+            f_speed_input = 0.0f;
+            b_speed_input = 0.0f;
+        }
+
+        if (f_speed_input < 0)
+            b_speed_input = 0.0f;
+        if (b_speed_input > 0)
+            f_speed_input = 0.0f;
+
+        
+        CommandRequest cmd{f_speed_input + b_speed_input, -steering_input};
+        {
+            std::lock_guard<std::mutex> lock(*cq_mu_);
+            cq_->push(cmd);
+        }
+        cq_cv_->notify_one();
+
+
+        received_input_from_4 = false;
+        received_input_from_5 = false;
+        received_input_from_0 = false;
         SDL_Delay(10);
+        SDL_FlushEvent(SDL_CONTROLLERAXISMOTION);
     }
-    SDL_Delay(10);
 }

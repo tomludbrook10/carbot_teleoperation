@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <iostream>
+#include <chrono>
 
 // Axis 5 is right trigger
 // Axis 4 is left trigger
@@ -16,6 +17,10 @@ int main() {
     }
 
     SDL_Event e;
+    using clock = std::chrono::high_resolution_clock;
+    auto last = clock::now();
+
+
     while (true) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_CONTROLLERAXISMOTION) {
@@ -25,6 +30,10 @@ int main() {
                     if (abs(value) < 2000) value = 0; // deadzone
                     float normalized = value / 32767.0f; // normalize to -1 to 1
                     std::cout << "Axis " << axis << " = " << normalized << "\n";
+                    auto now = clock::now();
+                    std::chrono::duration<float> elapsed = now - last;
+                    std::cout << "Elapsed time: " << elapsed.count() << " seconds\n";
+                    last = now;
                 } 
             }
             if (e.type == SDL_CONTROLLERBUTTONDOWN)

@@ -57,11 +57,11 @@ struct Kinematics {
     }
 
     void Print() {
-        std::cout << "Kinematics: " << std::endl;
-        std::cout << "  Speed: " << current_speed << std::endl;
-        std::cout << "  Steering Angle: " << current_steering_angle << std::endl;
-        std::cout << "  Position: (" << pose.position.x << ", " << pose.position.y << ")" << std::endl;
-        std::cout << "  Orientation: " << pose.orientation << std::endl;
+        std::cout << "\rKinematics: ";
+        std::cout << "  Speed: " << current_speed;
+        std::cout << "  Steering Angle: " << current_steering_angle;
+        std::cout << "  Position: (" << pose.position.x << ", " << pose.position.y << ")";
+        std::cout << "  Orientation: " << pose.orientation << std::flush;
     }
 };
 
