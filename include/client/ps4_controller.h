@@ -17,6 +17,7 @@ public:
 
 private:
     void KinematicListener();
+    void PS4Listener();
 
     float max_speed_ = 2.0f; // m/s
     float min_speed_ = -2.0f;
@@ -34,4 +35,8 @@ private:
 
     std::thread kinematic_listener_thread_;
     std::atomic<bool> run_listener_{true};
+
+    std::atomic<float> speed_input_{0.0f};
+    std::atomic<float> steering_input_{0.0f};
+    std::atomic<bool> run{true};
 };

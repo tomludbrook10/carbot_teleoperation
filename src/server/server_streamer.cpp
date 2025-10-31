@@ -76,7 +76,6 @@ void ServerStreamer::run() {
             std::cerr << "Error: must set up pipeline and bus first" << std::endl;
             return;
         }
-
         gst_element_set_state(pipeline_, GST_STATE_PLAYING);
         g_print("Pipeline is running...\n");
     }
