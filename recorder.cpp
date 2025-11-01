@@ -120,12 +120,16 @@ int run() {
     gst_object_unref (bus);
     gst_element_set_state (pipeline, GST_STATE_NULL);
     gst_object_unref (pipeline);
-    gst_object_unref (camera_caps);
-    gst_object_unref (convert_caps);
-    gst_object_unref (encoder_caps);
-    gst_object_unref (h256parse_caps);
-    gst_object_unref (payloader_caps);
-    gst_object_unref (udpsink_caps);
+    gst_object_unref (camera);
+    gst_object_unref (convert);
+    gst_object_unref (encoder);
+    gst_object_unref (h256parse);
+    gst_object_unref (payloader);
+    gst_object_unref (udpsink);
+    gst_object_unref (camera_caps_filter);
+    gst_object_unref (convert_caps_filter);
+    gst_caps_unref (camera_caps);
+    gst_caps_unref (convert_caps);
     return 0;
 }
 
