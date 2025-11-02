@@ -8,7 +8,7 @@
 std::atomic<bool> running{true};
 
 int main() {
-    TeleoperationServer server("192.168.99.201", "192.168.99.254");
+    TeleoperationServer server("192.168.99.201", "192.168.99.129", "/home/tom/carbot_teleoperation/rollouts");
 
     std::signal(SIGINT, [](int){ 
         running.store(false, std::memory_order_relaxed);
@@ -35,6 +35,5 @@ int main() {
         server_thread.join();
         std::cout << "Server thread joined successfully." << std::endl;
     }
-
     return 0;
 }

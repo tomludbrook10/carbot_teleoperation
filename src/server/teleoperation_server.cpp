@@ -19,13 +19,12 @@ Is that being transfered over? Like does queue now own that when we add it it?
 
 TeleoperationServer::TeleoperationServer(const std::string& server_address,
                                          const std::string& client_address,
-                                         const bool is_ros2_node,
+                                         const std::string& rollout_directory,
                                          const int video_port,
                                          const int rpc_port)
     : server_address_(server_address), client_address_(client_address),
       video_port_(video_port),
-      streamer_(client_address, video_port),
-      is_ros2_node_(is_ros2_node) {
+      streamer_(client_address, video_port, rollout_directory) {
     rpc_thread_ = std::thread(&TeleoperationServer::RunServer, this, server_address_, rpc_port);
     streamer_.setup();
     streamer_.run_async();

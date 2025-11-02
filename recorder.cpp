@@ -1,17 +1,26 @@
 #include <gst/gst.h>
+#include <iostream>
+#include <chrono>
+#include <thread>
 
-
-#define CLIENT_ADDRESS "192.168.99.254"
+#define CLIENT_ADDRESS "192.168.99.129"
 #define CLIENT_PORT 5000
 #define ZERO_LATENCY 0x00000004
 #define SUPERFAST 2
 
-
 int run() {
     GstElement *pipeline;
-    GstElement *camera, *convert, *encoder, *h256parse, *payloader, *udpsink;
+    GstElement *camera, *convert, *encoder, *h264parse, *payloader, *udpsink;
     GstElement *camera_caps_filter, *convert_caps_filter;
     GstCaps *camera_caps, *convert_caps;
+
+    // splitting elements. 
+    GstElement *tee, *streaming_queue, *recording_queue;
+
+    // recording elements
+    GstElement *mp4mux, *file_sink;
+
+
     GstBus *bus;
     GstMessage *msg;
     GstStateChangeReturn ret;
@@ -20,13 +29,28 @@ int run() {
     camera = gst_element_factory_make ("nvarguscamerasrc", "camera");
     convert = gst_element_factory_make ("nvvidconv", "convert");
     encoder = gst_element_factory_make ("x264enc", "encoder");
-    h256parse = gst_element_factory_make ("h264parse", "h256parse");
+    h264parse = gst_element_factory_make ("h264parse", "h264parse");
     payloader = gst_element_factory_make ("rtph264pay", "payloader");
     udpsink = gst_element_factory_make ("udpsink", "udpsink");
     camera_caps_filter = gst_element_factory_make ("capsfilter", "camera_caps_filter");
     convert_caps_filter = gst_element_factory_make ("capsfilter", "convert_caps_filter");
+    tee = gst_element_factory_make ("tee", "tee");
+    streaming_queue = gst_element_factory_make ("queue", "streaming_queue");
+    recording_queue = gst_element_factory_make ("queue", "recording_queue");
+    mp4mux = gst_element_factory_make ("mp4mux", "mp4mux");
+    file_sink = gst_element_factory_make ("filesink", "file_sink");
 
-    if (!pipeline || !camera || !convert || !encoder || !h256parse || !payloader || !udpsink) {
+    if (!camera || 
+        !convert || 
+        !encoder || 
+        !h264parse || 
+        !payloader || 
+        !udpsink || 
+        !tee || 
+        !streaming_queue || 
+        !recording_queue || 
+        !mp4mux || 
+        !file_sink) {
         g_printerr ("Not all elements could be created.\n");
         return -1;
     }
@@ -48,7 +72,7 @@ int run() {
         "tune", ZERO_LATENCY, // zerolatency
         "key-int-max", 30,
         nullptr);
-    g_object_set (G_OBJECT (h256parse), "config-interval", 4, nullptr);
+    g_object_set (G_OBJECT (h264parse), "config-interval", 4, nullptr);
     g_object_set (G_OBJECT (payloader), "pt", 96, nullptr);
     g_object_set (G_OBJECT (udpsink), 
         "host", CLIENT_ADDRESS,
@@ -56,28 +80,54 @@ int run() {
         "sync", false,
         nullptr);
 
-    pipeline = gst_pipeline_new ("pipeline");
+    g_object_set (G_OBJECT (file_sink), 
+        "location", "recording.mp4",
+        nullptr);
 
+    pipeline = gst_pipeline_new ("pipeline");
 
     // the bin is a container around an element
     gst_bin_add_many (GST_BIN (pipeline),
                       camera, 
-                      convert, 
-                      encoder, 
-                      h256parse, 
-                      payloader, 
-                      udpsink, 
+                      camera_caps_filter,
+                      convert,
+                      convert_caps_filter,
+                      encoder,
+                      h264parse,
                       nullptr);
 
-    if (gst_element_link (camera, convert) != TRUE || 
-        gst_element_link (convert, encoder) != TRUE ||
-        gst_element_link (encoder, h256parse) != TRUE || 
-        gst_element_link (h256parse, payloader) != TRUE ||
-        gst_element_link (payloader, udpsink) != TRUE) {
+    gst_bin_add_many (GST_BIN (pipeline),
+                    tee,
+                    streaming_queue,
+                    payloader,
+                    udpsink,
+                    recording_queue,
+                    mp4mux,
+                    file_sink,
+                    nullptr);
+
+    if (gst_element_link (camera, camera_caps_filter) != TRUE || 
+        gst_element_link (camera_caps_filter, convert) != TRUE ||
+        gst_element_link (convert, convert_caps_filter) != TRUE ||
+        gst_element_link (convert_caps_filter, encoder) != TRUE ||
+        gst_element_link (encoder, h264parse) != TRUE ||
+        gst_element_link (h264parse, tee) != TRUE) {
         g_printerr ("Elements could not be linked.\n");
         gst_object_unref (pipeline);
         return -1;
     }
+
+    if (gst_element_link_many (tee, streaming_queue, payloader, udpsink, nullptr) != TRUE ||
+        gst_element_link_many (tee, recording_queue, mp4mux, file_sink, nullptr) != TRUE) {
+        g_printerr ("Tee elements could not be linked.\n");
+        gst_object_unref (pipeline);
+        return -1;
+    }
+
+    GstClock *clock = gst_system_clock_obtain();
+    g_object_set (clock, "clock-type", GST_CLOCK_TYPE_MONOTONIC, nullptr);
+    gst_pipeline_use_clock (GST_PIPELINE (pipeline), clock);
+    gst_object_unref (clock);
 
     ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
@@ -86,9 +136,24 @@ int run() {
         return -1;
     }
 
+    GstClockTime base_time;
+    base_time = gst_element_get_base_time (pipeline);
+
+    std::cout << "base time " << base_time << std::endl;    
+
+    g_print ("Base time of camera element: %" GST_TIME_FORMAT "\n",
+    GST_TIME_ARGS (base_time));
+
     bus = gst_element_get_bus (pipeline);
-    msg = gst_bus_timed_pop_filtered (bus, GST_CLOCK_TIME_NONE,
+
+    GstClockTime timeout = 10 * GST_SECOND;
+
+    msg = gst_bus_timed_pop_filtered (bus, timeout,
         static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_EOS));
+
+
+    gst_element_send_event(pipeline, gst_event_new_eos());
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 
       /* Parse message */
     if (msg != NULL) {
@@ -116,20 +181,12 @@ int run() {
         gst_message_unref (msg);
     }
 
+    std::cout << "Stopping recording and streaming..." << std::endl;
+
     /* Free resources */
     gst_object_unref (bus);
     gst_element_set_state (pipeline, GST_STATE_NULL);
     gst_object_unref (pipeline);
-    gst_object_unref (camera);
-    gst_object_unref (convert);
-    gst_object_unref (encoder);
-    gst_object_unref (h256parse);
-    gst_object_unref (payloader);
-    gst_object_unref (udpsink);
-    gst_object_unref (camera_caps_filter);
-    gst_object_unref (convert_caps_filter);
-    gst_caps_unref (camera_caps);
-    gst_caps_unref (convert_caps);
     return 0;
 }
 

@@ -13,7 +13,7 @@ class TeleoperationServer {
 public:
     explicit TeleoperationServer(const std::string& server_address,
                                  const std::string& client_address,
-                                 const bool is_ros2_node = false,
+                                 const std::string& rollout_directory,
                                  const int video_port = 5000,
                                  const int rpc_port = 50051);
     ~TeleoperationServer();
@@ -44,5 +44,4 @@ private:
     ServerStreamer streamer_;
 
     std::atomic<bool> running_{true};
-    const bool is_ros2_node_;
 };
