@@ -2,9 +2,10 @@
 #include <gst/gst.h>
 #include <sstream>
 #include <iostream>
+#include <fstream>
 
-ServerStreamer::ServerStreamer(const std::string client_address, const int client_port)
-    : pipeline_(nullptr), bus_(nullptr), client_address_(client_address), client_port_(client_port) {}
+ServerStreamer::ServerStreamer(const std::string client_address, const int client_port, const std::string rollout_directory)
+    : pipeline_(nullptr), bus_(nullptr), client_address_(client_address), client_port_(client_port), rollout_directory_(rollout_directory) {}
 
 ServerStreamer::~ServerStreamer() {
     // if kill_run is already, been called it does nothing.
@@ -22,35 +23,111 @@ bool ServerStreamer::setup() {
 
     gst_init(nullptr, nullptr);
 
-    // key-int-max=30 ensures at least one keyframe every second for 30fps video
+    camera_ = gst_element_factory_make ("nvarguscamerasrc", "camera");
+    convert_ = gst_element_factory_make ("nvvidconv", "convert");
+    encoder_ = gst_element_factory_make ("x264enc", "encoder");
+    h264parse_ = gst_element_factory_make ("h264parse", "h264parse");
+    payloader_ = gst_element_factory_make ("rtph264pay", "payloader");
+    udpsink_ = gst_element_factory_make ("udpsink", "udpsink");
+    camera_caps_filter_ = gst_element_factory_make ("capsfilter", "camera_caps_filter");
+    convert_caps_filter_ = gst_element_factory_make ("capsfilter", "convert_caps_filter");
+    tee_ = gst_element_factory_make ("tee", "tee");
+    streaming_queue_ = gst_element_factory_make ("queue", "streaming_queue");
+    recording_queue_ = gst_element_factory_make ("queue", "recording_queue");
+    mp4mux_ = gst_element_factory_make ("mp4mux", "mp4mux");
+    file_sink_ = gst_element_factory_make ("filesink", "file_sink");
 
-    std::ostringstream pipeline_stream;
-    pipeline_stream << "nvarguscamerasrc sensor-id=0 ! "
-                    << "video/x-raw(memory:NVMM), width=1920, height=1080, framerate=30/1, format=NV12 ! "
-                    << "nvvidconv ! "
-                    << "video/x-raw, format=NV12 ! "
-                    << "x264enc bitrate=4000 speed-preset=superfast tune=zerolatency key-int-max=30 ! "
-                    << "h264parse config-interval=1 ! "
-                    << "rtph264pay pt=96 ! "
-                    << "udpsink host="
-                    << client_address_
-                    << " port="
-                    << std::to_string(client_port_)
-                    << " sync=false";
-
-    std::lock_guard<std::mutex> lock(pipeline_mu_);
-    pipeline_ = gst_parse_launch(pipeline_stream.str().c_str(), nullptr);
-    if (!pipeline_) {
-        g_printerr ("Failed to create pipeline from description\n");
+    if (!camera_ || 
+        !convert_ || 
+        !encoder_ || 
+        !h264parse_ || 
+        !payloader_ || 
+        !udpsink_ || 
+        !tee_ || 
+        !streaming_queue_ || 
+        !recording_queue_ || 
+        !mp4mux_ || 
+        !file_sink_) {
+        g_printerr ("Not all elements could be created.\n");
         return false;
     }
 
-    bus_ = gst_element_get_bus(pipeline_);
-    if (!bus_) {
-        g_printerr("Failed to create bus");
+    camera_caps_ = gst_caps_from_string(
+        "video/x-raw(memory:NVMM), width=1920, height=1080, framerate=30/1, format=NV12");
+    convert_caps_ = gst_caps_from_string(
+        "video/x-raw, format=NV12");
+
+    g_object_set (G_OBJECT (camera_caps_filter_), "caps", camera_caps_, nullptr);
+    g_object_set (G_OBJECT (convert_caps_filter_), "caps", convert_caps_, nullptr);
+
+    // set elelment properties
+    g_object_set (G_OBJECT (camera_), "sensor-id", 0, nullptr);
+    g_object_set (G_OBJECT (encoder_), 
+        "bitrate", 4000,
+        "speed-preset", SUPERFAST, // superfast
+        "tune", ZERO_LATENCY, // zerolatency
+        "key-int-max", 30,
+        nullptr);
+
+    g_object_set (G_OBJECT (h264parse_), "config-interval", 4, nullptr);
+    g_object_set (G_OBJECT (payloader_), "pt", 96, nullptr);
+    g_object_set (G_OBJECT (udpsink_), 
+        "host", client_address_.c_str(),
+        "port", client_port_,
+        "sync", false,
+        nullptr);
+        
+    std::string file_location = rollout_directory_ + "/recording.mp4";
+
+    g_object_set (G_OBJECT (file_sink_), 
+        "location", file_location.c_str(),
+        nullptr);
+
+    pipeline_ = gst_pipeline_new ("pipeline");
+
+    // the bin is a container around an element
+    gst_bin_add_many (GST_BIN (pipeline_),
+                      camera_, 
+                      camera_caps_filter_,
+                      convert_,
+                      convert_caps_filter_,
+                      encoder_,
+                      h264parse_,
+                      nullptr);
+
+    gst_bin_add_many (GST_BIN (pipeline_),
+                    tee_,
+                    streaming_queue_,
+                    payloader_,
+                    udpsink_,
+                    recording_queue_,
+                    mp4mux_,
+                    file_sink_,
+                    nullptr);
+
+    if (gst_element_link (camera_, camera_caps_filter_) != TRUE || 
+        gst_element_link (camera_caps_filter_, convert_) != TRUE ||
+        gst_element_link (convert_, convert_caps_filter_) != TRUE ||
+        gst_element_link (convert_caps_filter_, encoder_) != TRUE ||
+        gst_element_link (encoder_, h264parse_) != TRUE ||
+        gst_element_link (h264parse_, tee_) != TRUE) {
+        g_printerr ("Elements could not be linked.\n");
         return false;
     }
-    std::cout << "Successfully set up pipeline and bus" << std::endl;
+
+    if (gst_element_link_many (tee_, streaming_queue_, payloader_, udpsink_, nullptr) != TRUE ||
+        gst_element_link_many (tee_, recording_queue_, mp4mux_, file_sink_, nullptr) != TRUE) {
+        g_printerr ("Tee elements could not be linked.\n");
+        gst_object_unref (pipeline_);
+        return false;
+    }
+    bus_ = gst_element_get_bus (pipeline_);
+
+    /// setting up clock. 
+    GstClock *clock = gst_system_clock_obtain();
+    g_object_set (clock, "clock-type", GST_CLOCK_TYPE_MONOTONIC, nullptr);
+    gst_pipeline_use_clock (GST_PIPELINE (pipeline_), clock);
+    gst_object_unref (clock);
     return true;
 }
 
@@ -76,10 +153,16 @@ void ServerStreamer::run() {
             std::cerr << "Error: must set up pipeline and bus first" << std::endl;
             return;
         }
-        gst_element_set_state(pipeline_, GST_STATE_PLAYING);
-        g_print("Pipeline is running...\n");
+
+        GstStateChangeReturn ret = gst_element_set_state (pipeline_, GST_STATE_PLAYING);
+        if (ret == GST_STATE_CHANGE_FAILURE) {
+            g_printerr ("Unable to set the pipeline to the playing state.\n");
+            gst_object_unref (pipeline_);
+            return;
+        }
     }
 
+    base_time_ = static_cast<uint64_t>(gst_element_get_base_time (camera_));
     GstMessage *msg = gst_bus_timed_pop_filtered(bus_, GST_CLOCK_TIME_NONE,
                                             static_cast<GstMessageType>(GST_MESSAGE_ERROR | GST_MESSAGE_EOS));
 
@@ -103,5 +186,11 @@ void ServerStreamer::run() {
         }
         gst_message_unref (msg);
     }
+
+    std::string file_location = rollout_directory_ + "/start_time.txt";
+    std::ofstream outfile(file_location);
+    outfile << base_time_ << std::endl;
+    outfile.close();
+
     g_print("Finished streaming\n");
 }
