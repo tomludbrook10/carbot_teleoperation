@@ -1,11 +1,9 @@
 #include <gst/gst.h>
 
-
-#define CLIENT_ADDRESS "192.168.99.254"
+#define CLIENT_ADDRESS "192.168.99.129"
 #define CLIENT_PORT 5000
 #define ZERO_LATENCY 0x00000004
 #define SUPERFAST 2
-
 
 int run() {
     GstElement *pipeline;
