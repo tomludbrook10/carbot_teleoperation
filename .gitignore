@@ -23,6 +23,9 @@ CMakeCache.txt
 *.app
 *.pdb
 
+# data files
+/rollouts
+
 # Compiled object files
 *.obj
 *.elf

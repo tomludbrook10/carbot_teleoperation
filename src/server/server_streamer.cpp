@@ -36,6 +36,7 @@ bool ServerStreamer::setup() {
     recording_queue_ = gst_element_factory_make ("queue", "recording_queue");
     mp4mux_ = gst_element_factory_make ("mp4mux", "mp4mux");
     file_sink_ = gst_element_factory_make ("filesink", "file_sink");
+    timestamp_logger_ = gst_element_factory_make("timestamplogger", "timestamp_logger");
 
     if (!camera_ || 
         !convert_ || 
@@ -47,7 +48,10 @@ bool ServerStreamer::setup() {
         !streaming_queue_ || 
         !recording_queue_ || 
         !mp4mux_ || 
-        !file_sink_) {
+        !file_sink_ ||
+        !timestamp_logger_ ||
+        !camera_caps_filter_ ||
+        !convert_caps_filter_) {
         g_printerr ("Not all elements could be created.\n");
         return false;
     }
@@ -83,6 +87,11 @@ bool ServerStreamer::setup() {
         "location", file_location.c_str(),
         nullptr);
 
+    std::string timestamp_file = rollout_directory_ + "/timestamp_log.txt";
+    g_object_set (G_OBJECT (timestamp_logger_),
+        "file-path", timestamp_file.c_str(),
+        nullptr);
+
     pipeline_ = gst_pipeline_new ("pipeline");
 
     // the bin is a container around an element
@@ -92,6 +101,7 @@ bool ServerStreamer::setup() {
                       convert_,
                       convert_caps_filter_,
                       encoder_,
+                      timestamp_logger_,
                       h264parse_,
                       nullptr);
 
@@ -106,7 +116,8 @@ bool ServerStreamer::setup() {
                     nullptr);
 
     if (gst_element_link (camera_, camera_caps_filter_) != TRUE || 
-        gst_element_link (camera_caps_filter_, convert_) != TRUE ||
+        gst_element_link (camera_caps_filter_, timestamp_logger_) != TRUE ||
+        gst_element_link (timestamp_logger_, convert_) != TRUE ||
         gst_element_link (convert_, convert_caps_filter_) != TRUE ||
         gst_element_link (convert_caps_filter_, encoder_) != TRUE ||
         gst_element_link (encoder_, h264parse_) != TRUE ||

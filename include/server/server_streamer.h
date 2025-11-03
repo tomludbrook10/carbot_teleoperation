@@ -26,6 +26,7 @@ private:
     GstElement *camera_, *convert_, *encoder_, *h264parse_, *payloader_, *udpsink_;
     GstElement *camera_caps_filter_, *convert_caps_filter_;
     GstCaps *camera_caps_, *convert_caps_;
+    GstElement *timestamp_logger_;
 
     // splitting elements. 
     GstElement *tee_, *streaming_queue_, *recording_queue_;
