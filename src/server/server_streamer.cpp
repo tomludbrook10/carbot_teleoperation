@@ -59,7 +59,7 @@ bool ServerStreamer::setup() {
     camera_caps_ = gst_caps_from_string(
         "video/x-raw(memory:NVMM), width=1920, height=1080, framerate=30/1, format=NV12");
     convert_caps_ = gst_caps_from_string(
-        "video/x-raw, format=NV12");
+        "video/x-raw, width=640, height=480, format=NV12");
 
     g_object_set (G_OBJECT (camera_caps_filter_), "caps", camera_caps_, nullptr);
     g_object_set (G_OBJECT (convert_caps_filter_), "caps", convert_caps_, nullptr);
