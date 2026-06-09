@@ -4,6 +4,7 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 
 
 PS4Controller::PS4Controller(std::queue<CommandRequest>* cq, std::mutex* mu, std::condition_variable* cv,
@@ -112,6 +113,10 @@ void PS4Controller::Run() {
         if (now - last >= std::chrono::milliseconds(20)) {
             auto current_speed = speed_input_.load(std::memory_order_relaxed);
             auto current_steering = steering_input_.load(std::memory_order_relaxed);
+            
+            // temp fix 0.25 m/s 
+            current_speed = std::min(current_speed, 0.6f);
+
             if (current_speed != prev_speed || current_steering != prev_steering) {
                 CommandRequest cmd{current_speed, current_steering};
                 {
