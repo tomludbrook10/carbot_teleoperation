@@ -9,7 +9,7 @@ live H.264 video from the Jetson camera. The recorder tees that camera feed to b
 live stream and an mp4, so every run gets saved as a rollout (video + control log) ready
 for training.
 
-**Stack:** C++ · gRPC / Protobuf · GStreamer · PS4 / keyboard input
+**Stack:** C++ · gRPC · GStreamer · PS4 controller
 
 ## Part of the carbot project
 
